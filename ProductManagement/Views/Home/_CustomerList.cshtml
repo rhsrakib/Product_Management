@@ -1,0 +1,53 @@
+﻿@model List<ProductManagement.Models.Customer>
+
+@{
+    var listProduct = ViewData["ProductList"] as List<Product>;
+    int totalOrderQty = 0;
+    decimal totalOrderPrice = 0.00m;
+}
+
+<div class="text-center">
+    <h4>List</h4>
+</div>
+
+<div class="table table-responsive-sm" id="customerTable">
+    <table id="tblList" class="table table-bordered table-responsive row-border border table-sm table-hover">
+        <thead>
+            <tr class="text-center">
+                <th scope="col">SL</th>
+                <th scope="col">Customer Name</th>
+                <th scope="col">Phone</th>
+                <th scope="col">Total Order Qty</th>
+                <th scope="col">Total Order Value</th>
+                <th scope="col">Action</th>
+            </tr>
+        </thead>
+        <tbody class="text-center" id="tbody">
+            @foreach (var item in Model)
+            {
+                totalOrderQty += item.TotalOrderQty.GetValueOrDefault(); // Handle nullable decimal
+                totalOrderPrice += item.TotalOrderPrice.GetValueOrDefault();
+                <tr id="tr" class="text-center">
+                    <td>@(Model.ToList().IndexOf(item) + 1)</td>
+                    <td>@item.CustomerName</td>
+                    <td>@item.Phone</td>
+                    <td>@item.TotalOrderQty</td>
+                    <td>@item.TotalOrderPrice</td>
+                    <td>
+                        <a class="btn btn-outline-info btn-sm generatePDF" href="#" data-id="@item.CustomerId" title="Print"><i class="fas fa-print"></i></a>
+                        <a class="btn btn-outline-secondary btn-sm" href="#" id="editCustomerBtn" data-id="@item.CustomerId" title="Edit"><i class="fas fa-edit"></i></a>
+                        <a class="btn btn-outline-danger btn-sm deleteCustomerBtn" data-id="@item.CustomerId" title="Delete"><i class="fas fa-trash"></i></a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="3"><strong>Total</strong></td>
+                <td class="text-center"><strong>@totalOrderQty</strong></td>
+                <td class="text-center"><strong>@totalOrderPrice.ToString("F2")</strong></td>
+                <td></td>
+            </tr>
+        </tfoot>
+    </table>
+</div>

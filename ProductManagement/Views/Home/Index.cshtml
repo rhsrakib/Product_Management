@@ -1,0 +1,339 @@
+﻿@model ProductManagement.ViewModels.CustomerVM
+
+@{
+    ViewData["Title"] = "Index";
+    var listCustomer = ViewData["CustomerList"] as List<Customer>;
+    var listProduct = ViewData["ProductList"] as List<Product>;
+}
+
+<div class="container mt-3">
+    <div class="row">
+        <div class="col">
+            <div id="customerFormContainer">
+                @await Html.PartialAsync("_CustomerForm", Model)
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="customerListContainer" class="mt-2" style="border: 1px solid #ccc; padding: 10px; border-radius: 5px;">
+    @await Html.PartialAsync("_CustomerList", listCustomer)
+</div>
+
+@section Scripts{
+    <script>
+        $(document).ready(function () {
+            // Handle save button click
+            $(document).on('submit', '#customerForm', function (e) {
+                e.preventDefault();
+                var form = $(this)[0];
+                var formData = new FormData(form);
+                var actionUrl = $(this).attr('action');
+                $.ajax({
+                    type: 'POST',
+                    url: actionUrl,
+                    data: formData,
+                    contentType: false,
+                    processData: false,
+                    success: function (result) {
+                        if ($(result).find('.text-danger').length > 0) {
+                            $('#customerFormContainer').html(result);
+                        } else {
+                            $('#customerListContainer').html(result);
+                            resetForm();
+                            alert('Customer information saved successfully.');
+                        }
+                    },
+                    error: function () {
+                        alert('An error occurred while saving customer information data.');
+                    }
+                });
+            });
+
+            // Handle edit button click
+            $(document).on('click', '#editCustomerBtn', function () {
+                var id = $(this).data('id');
+                $.get('@Url.Action("Index", "Home")', { id: id }, function (result) {
+                    $('#customerFormContainer').html($(result).find('#customerFormContainer').html());
+                    $('#submitCustomerBtn').text('Update');
+                    $('#customerForm').attr('action', '@Url.Action("Create", "Home")'); // Set form action to Edit
+                });
+            });
+
+            // Handle delete button click
+            $(document).on('click', '.deleteCustomerBtn', function (e) {
+                e.preventDefault();
+                var id = $(this).data('id');
+                if (confirm('Are you sure to delete this?')) {
+                    $.ajax({
+                        type: 'POST',
+                        url: '@Url.Action("Delete", "Home")/' + id,
+                        success: function (result) {
+                            $('#customerListContainer').html(result);
+                            $('#OrderNo').val('');
+                            generateNextOrderNo();
+                            alert('Customer information successfully deleted.');
+                        },
+                        error: function () {
+                            alert('An error occurred while deleting customer information.');
+                        }
+                    });
+                }
+            });
+
+            function generateNextOrderNo() {
+                $.ajax({
+                    type: 'GET',
+                    url: '@Url.Action("GenerateNextOrderNo", "Home")',
+                    success: function (result) {
+                        $('#OrderNo').val(result);
+                    },
+                    error: function () {
+                        alert('An error occurred while generating the next bank code.');
+                    }
+                });
+            }
+
+            function resetForm() {
+                $('#customerForm')[0].reset();
+                $('#submitCustomerBtn').text('Save');
+                $('#tbodyProduct').empty();
+                $('#CustomerId').val('');
+                $('#TotalOrderQty').val('');
+                $('#TotalOrderPrice').val('');
+                // $('#OrderNo').val('');
+                $('#CustomerName').val('');
+                $('#Phone').val('');
+                $('#Address').val('');
+                $('#customerForm').attr('action', '@Url.Action("Create", "Home")'); // Reset form action to Create
+                generateNextOrderNo();
+            }
+
+            // Handle reset button click
+            $(document).on('click', '#resetButton', function () {
+                resetForm();
+            });
+
+            resetForm();
+
+
+            // Generate PDF Report
+            $(document).on('click', '.generatePDF', function (event) {
+                event.preventDefault();
+                const customerId = $(this).data('id');
+
+                // Fetch data for the selected customer
+                $.ajax({
+                    type: 'GET',
+                    url: '@Url.Action("GetCustomerProductData", "Home")',
+                    data: { id: customerId },
+                    success: function (data) {
+                        // Check if the data structure is valid and products are available
+                        if (data && Array.isArray(data.products)) {
+                            if (data.products.length > 0) {
+                                generatePDF(data);
+                            } else {
+                                alert('The selected customer has no products associated.');
+                            }
+                        } else {
+                            alert('No products data available for the selected customer.');
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        alert('An error occurred while fetching data.');
+                    }
+                });
+            });
+
+            function generatePDF(data) {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF({
+                    orientation: 'portrait',
+                    unit: 'pt',
+                    format: 'a4'
+                });
+
+                doc.setFontSize(18);
+                doc.text("Invoice", doc.internal.pageSize.width / 2, 40, 'center');
+
+                // Add customer information at the top of the PDF
+                doc.setFontSize(12);
+                doc.text(`Customer Name: ${data.customerName || ''}`, 40, 80);
+                doc.text(`Phone No: ${data.phone || ''}`, 40, 100);
+                doc.text(`Address: ${data.address || ''}`, 40, 120);
+
+                const columns = ['Product Name', 'Quantity', 'Unit Price', 'Total Price'];
+                const rows = data.products.map(item => [
+                    item.productName || '', // Handle undefined or null values
+                    item.quantity || 0,
+                    (item.unitPrice || 0).toFixed(2), // Ensure numeric formatting
+                    (item.totalPrice || 0).toFixed(2) // Ensure numeric formatting
+                ]);
+
+                // Calculate subtotals
+                const subtotalQuantity = data.products.reduce((sum, item) => sum + (item.quantity || 0), 0);
+                const subtotalTotalPrice = data.products.reduce((sum, item) => sum + (item.totalPrice || 0), 0).toFixed(2);
+
+                // Draw table
+                doc.autoTable({
+                    head: [columns],
+                    body: rows,
+                    startY: 130, // Adjusted to leave space for the customer info
+                    theme: 'grid',
+                    headStyles: {
+                        fillColor: [0, 0, 0],
+                        textColor: [255, 255, 255],
+                        fontSize: 10,
+                        fontStyle: 'bold'
+                    },
+                    bodyStyles: {
+                        fontSize: 10
+                    },
+                    styles: {
+                        cellPadding: 3,
+                        overflow: 'linebreak',
+                        tableWidth: 'auto',
+                        lineColor: [0, 0, 0], // Line color for borders
+                        lineWidth: 0.75 // Line width for borders
+                    },
+                    foot: [
+                        [
+                            'Total:', // Total label
+                            `${subtotalQuantity}`, // Subtotal for Quantity
+                            '', // Empty cell
+                            `${subtotalTotalPrice}` // Subtotal for Total Price
+                        ]
+                    ],
+                    footStyles: {
+                        fillColor: [255, 255, 255], // Footer background color
+                        textColor: [0, 0, 0], // Footer text color
+                        fontSize: 10,
+                        fontStyle: 'bold',
+                        lineColor: [0, 0, 0], // Line color for footer cell borders
+                        lineWidth: 0.75 // Line width for footer cell borders
+                    },
+                    columnStyles: {
+                        0: { halign: 'left' }, // left align for Product Name
+                        1: { halign: 'left' }, // left align for Quantity
+                        2: { halign: 'left' }, // left align for empty cell
+                        3: { halign: 'left' }  // left align for Total Price
+                    }
+                });
+                doc.save('customer_product_report.pdf');
+            }
+        });
+
+
+        let productCounter = 0;
+        let currentRow = null;
+
+        function addProduct() {
+            const productName = $('#productName').val();
+            const quantity = parseFloat($('#quantity').val());
+            const unitPrice = parseFloat($('#unitPrice').val());
+            const totalPrice = quantity * unitPrice;
+
+            if (currentRow) {
+                // Update existing row
+                currentRow.find('input[name*="ProductName"]').val(productName);
+                currentRow.find('input[name*="Quantity"]').val(quantity);
+                currentRow.find('input[name*="UnitPrice"]').val(unitPrice);
+                currentRow.find('input[name*="TotalPrice"]').val(totalPrice);
+
+                currentRow = null;
+                $('#addProductBtn').text('Add');
+            } else {
+                // Add new row
+                const newRow = $(`
+                    <tr>
+                        <td class="serial-number">${++productCounter}</td>
+                        <td>
+                            <input type="hidden" name="Products[${productCounter - 1}].ProductId" value="" />
+                            <input type="hidden" name="Products[${productCounter - 1}].CustomerId" value="${$('#id').val()}" />
+                            <input type="text" class="form-control form-control-sm" name="Products[${productCounter - 1}].ProductName" value="${productName}" readonly="readonly" />
+                        </td>
+                        <td>
+                            <input type="number" class="form-control form-control-sm" name="Products[${productCounter - 1}].Quantity" value="${quantity}" readonly="readonly" />
+                        </td>
+                        <td>
+                            <input type="number" class="form-control form-control-sm" name="Products[${productCounter - 1}].UnitPrice" value="${unitPrice}" readonly="readonly" />
+                        </td>
+                        <td>
+                            <input type="number" class="form-control form-control-sm" name="Products[${productCounter - 1}].TotalPrice" value="${totalPrice}" readonly="readonly" />
+                        </td>
+                        <td class="text-center">
+                            <button type="button" class="btn btn-outline-info btn-sm" onclick="editProduct(this)">Edit</button>
+                            <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeProduct(this)">Delete</button>
+                        </td>
+                    </tr>
+                `);
+
+                $('#productTable tbody').append(newRow);
+            }
+
+            resetProductForm();
+            updateSubtotals();
+        }
+
+        function resetProductForm() {
+            $('#productName').val('');
+            $('#quantity').val('');
+            $('#unitPrice').val('');
+            $('#addProductBtn').text('Add');
+        }
+
+        function editProduct(button) {
+            currentRow = $(button).closest('tr');
+
+            const productName = currentRow.find('input[name*="ProductName"]').val();
+            const quantity = currentRow.find('input[name*="Quantity"]').val();
+            const unitPrice = currentRow.find('input[name*="UnitPrice"]').val();
+
+            $('#productName').val(productName);
+            $('#quantity').val(quantity);
+            $('#unitPrice').val(unitPrice);
+
+            $('#addProductBtn').text('Update');
+        }
+
+        function removeProduct(button) {
+            $(button).closest('tr').remove();
+            updateSerialNumbers();
+            updateSubtotals();
+        }
+
+        function updateSerialNumbers() {
+            productCounter = 0; // Reset product counter
+            $('#productTable tbody tr').each(function () {
+                $(this).find('.serial-number').text(++productCounter); // Update serial number
+                updateRowNameAttributes($(this), productCounter - 1); // Update name attributes
+            });
+        }
+
+        function updateRowNameAttributes(row, index) {
+            row.find('input').each(function () {
+                const name = $(this).attr('name');
+                if (name) {
+                    const updatedName = name.replace(/\[\d+\]/, `[${index}]`);
+                    $(this).attr('name', updatedName);
+                }
+            });
+        }
+
+        function updateSubtotals() {
+            let totalQuantity = 0;
+            let totalPrice = 0;
+
+            $('#productTable tbody tr').each(function () {
+                const quantity = parseFloat($(this).find('input[name*="Quantity"]').val());
+                const totalPriceForRow = parseFloat($(this).find('input[name*="TotalPrice"]').val());
+
+                totalQuantity += quantity;
+                totalPrice += totalPriceForRow;
+            });
+
+            $('#subtotalQuantity input').val(totalQuantity);
+            $('#subtotalPrice input').val(totalPrice);
+        }                
+    </script>
+}

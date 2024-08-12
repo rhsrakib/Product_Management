@@ -1,0 +1,193 @@
+﻿@model ProductManagement.ViewModels.CustomerVM
+
+@{
+    ViewData["Title"] = "Index";
+    var listCustomer = ViewData["CustomerList"] as List<Customer>;
+    var listProduct = ViewData["ProductList"] as List<Product>;
+}
+
+<style>
+    .form-group label {
+        margin-right: .5rem;
+        min-width: 150px;
+    }
+
+    .form-group input {
+        flex: 1;
+        max-width: 100%; /*150px*/
+    }
+
+    #imageForm, {
+        display: flex;
+        flex: 1;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 10px;
+        margin-right: 20px;
+        min-width: 100%;
+        max-width: 100%;
+    }
+
+    .input-wrapper {
+        position: relative;
+        width: 100%; /* Set wrapper width to 100% */
+    }
+
+        .input-wrapper input {
+            width: 100%; /* Set input width to 100% */
+        }
+
+        .input-wrapper span {
+            left: 0;
+            width: 150%; /* Span occupies full width */
+        }
+</style>
+
+<h4 class="text-center">Customer Info</h4>
+<form id="customerForm" method="post" action="@Url.Action("Create", "Home")">
+    <div class="row" style="border: 1px solid #ccc; padding: 10px; border-radius: 5px;">
+        <div class="d-flex justify-content-end">
+            <div class="btn-group btn-group-toggle btn-group-sm" data-toggle="buttons">
+                <button type="submit" id="submitCustomerBtn" class="btn btn-outline-success" tabindex="8">Save</button>
+                <button type="button" id="resetButton" class="btn btn-outline-warning" tabindex="9">Clear</button>
+            </div>
+        </div>
+        <input type="hidden" asp-for="CustomerId" />
+        <div class="row">
+            <div class="col-sm-4">
+                <div class="form-group  d-flex align-items-center justify-content-between">
+                    <label class="d-flex justify-content-end form-label col-form-label-sm" asp-for="OrderNo">Order No</label>
+                    <div class="input-wrapper">
+                        <input class="form-control form-control-sm" asp-for="OrderNo" placeholder="" readonly="readonly" data-val="false" />
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm-4">
+                <div class="form-group d-flex align-items-center justify-content-between">
+                    <label class="form-label justify-content-end form-label col-form-label-sm" asp-for="CustomerName">Customer Name <span class="ms-1" style="color: red">*</span></label>
+                    <div class="input-wrapper">
+                        <input type="text" class="form-control form-control-sm" asp-for="CustomerName" placeholder="Customer Name" title="Enter customer name" style="font-style: italic" tabindex="1" autofocus />
+                        <span asp-validation-for="CustomerName" class="text-danger"></span>
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm-4">
+                <div class="form-group  d-flex align-items-center justify-content-between">
+                    <label class="d-flex justify-content-end form-label col-form-label-sm" asp-for="Phone">Phone<span class="ms-1" style="color: red">*</span></label>
+                    <div class="input-wrapper">
+                        <input type="text" class="form-control form-control-sm" asp-for="Phone" placeholder="Phone No" title="Enter phone no" style="font-style: italic" tabindex="2" />
+                        <span asp-validation-for="Phone" class="text-danger"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-sm-12">
+                <div class="form-group  d-flex align-items-center justify-content-between">
+                    <label class="d-flex justify-content-end form-label col-form-label-sm" asp-for="Address">Address <span class="ms-1" style="color: red">*</span></label>
+                    <div class="input-wrapper">
+                        <textarea type="text" class="form-control pb-4" asp-for="Address" placeholder="Address..." style="font-style: italic" title="Enter customer address" tabindex="3"></textarea>
+                        <span asp-validation-for="Address" class="text-danger"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    
+    <div class="row mt-2" style="border: 1px solid #ccc; padding: 10px; border-radius: 5px;">
+        <div class="text-center">
+            <h4>Product Information</h4>
+        </div>
+
+        <div class="row mb-2">
+            <div class="col-sm-4">
+                <div class="form-group  d-flex align-items-center justify-content-between">
+                    <label class="d-flex justify-content-end form-label col-form-label-sm" asp-for="ProductName">Product Name</label>
+                    <div class="input-wrapper">
+                        <input type="text" class="form-control form-control-sm" id="productName" placeholder="Enter Product Name" tabindex="4" />
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm-3">
+                <div class="form-group  d-flex align-items-center justify-content-between">
+                    <label class="d-flex justify-content-end form-label col-form-label-sm" asp-for="Quantity">Quantity</label>
+                    <div class="input-wrapper">
+                        <input type="number" class="form-control form-control-sm" id="quantity" placeholder="Quantity" tabindex="5" />
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm-4">
+                <div class="form-group  d-flex align-items-center justify-content-between">
+                    <label class="d-flex justify-content-end form-label col-form-label-sm" asp-for="UnitPrice">Unit Price</label>
+                    <div class="input-wrapper">
+                        <input type="number" class="form-control form-control-sm" id="unitPrice" placeholder="Unit Price" tabindex="6" />
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm-1">
+                <button type="button" class="btn btn-outline-success btn-sm" onclick="addProduct()" tabindex="7">Add</button>
+            </div>
+        </div>
+
+        <div class="row border-box">
+            <table class="table table-bordered table-sm" id="productTable">
+                <thead>
+                    <tr class="text-center">
+                        <th scope="col">SL</th>
+                        <th scope="col">Product Name</th>
+                        <th scope="col">Quantity</th>
+                        <th scope="col">Unit Price</th>
+                        <th scope="col">Total Price</th>
+                        <th scope="col">Action</th>
+                    </tr>
+                </thead>
+                @* <tbody id="tbodyProduct">
+                    
+                </tbody> *@
+                <tbody id="tbodyProduct">
+                    @if (Model.Products != null)
+                    {
+                        for (int i = 0; i < Model.Products.Count(); i++)
+                        {
+                            <tr class="text-center">
+                                <td>@(i + 1)</td>
+                                <td class="text-start">
+                                    <input type="hidden" name="Products[@i].ProductId" value="@Model.Products[i].ProductId" />
+                                    <input type="hidden" name="Products[@i].CustomerId" value="@Model.Products[i].CustomerId" />
+                                    <input type="text" class="form-control form-control-sm" name="Products[@i].ProductName" value="@Model.Products[i].ProductName" />
+                                </td>
+                                <td class="text-start">
+                                    <input type="number" class="form-control form-control-sm" name="Products[@i].Quantity" value="@Model.Products[i].Quantity" />
+                                </td>
+                                <td class="text-end">
+                                    <input type="number" class="form-control form-control-sm" name="Products[@i].UnitPrice" value="@Model.Products[i].UnitPrice" />
+                                </td>
+                                <td class="text-end">
+                                    <input type="number" class="form-control form-control-sm" name="Products[@i].TotalPrice" value="@Model.Products[i].TotalPrice" readonly="readonly" />
+                                </td>
+                                <td class="text-center">
+                                    <button type="button" class="btn btn-outline-info btn-sm" onclick="editProduct(this)">Edit</button>
+                                    <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeProduct(this)">Delete</button>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="2" class="text-right"><strong>Total</strong></td>
+                        <td id="subtotalQuantity">
+                            <input type="number" asp-for="TotalOrderQty" class="form-control form-control-sm" readonly="readonly" />
+                        </td>
+                        <td></td>
+                        <td id="subtotalPrice">
+                            <input type="number" asp-for="TotalOrderPrice" class="form-control form-control-sm" readonly="readonly" />
+                        </td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+</form>
